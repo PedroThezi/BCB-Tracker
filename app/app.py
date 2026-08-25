@@ -1,26 +1,12 @@
 import streamlit as st
 import pandas as pd
-import psycopg2
-from datetime import datetime, timedelta
+from config.database import get_connection as database_connection
 
 # Configuração da página (deve ser o primeiro comando Streamlit)
 st.set_page_config(page_title="📊 DolarTracker", layout="wide")
 
-@st.cache_resource
 def get_connection():
-    """
-    Conecta ao banco usando st.secrets. 
-    No Render, isso vem das Environment Variables. 
-    Localmente, vem do .env ou secrets.toml.
-    """
-    conn = psycopg2.connect(
-        host=st.secrets["POSTGRES_HOST"],
-        port=st.secrets["POSTGRES_PORT"],
-        database=st.secrets["POSTGRES_DB"],
-        user=st.secrets["POSTGRES_USER"],
-        password=st.secrets["POSTGRES_PASSWORD"]
-    )
-    return conn
+    return database_connection()
 
 def fetch_data():
     """Busca os dados do banco de dados."""
