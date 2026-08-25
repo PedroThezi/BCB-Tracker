@@ -1,89 +1,86 @@
-# app/app.py
-import os
-from urllib.parse import urlparse
-
-import pandas as pd
-import plotly.express as px
-import psycopg2
 import streamlit as st
+import pandas as pd
+import psycopg2
+from datetime import datetime, timedelta
 
-st.set_page_config(page_title="Dólar Tracker", layout="centered")
+# Configuração da página (deve ser o primeiro comando Streamlit)
+st.set_page_config(page_title="📊 DolarTracker", layout="wide")
 
-st.title("📈 Dólar, Selic e CDI")
-st.caption("Séries diárias do SGS/BCB relacionadas ao câmbio dólar/real.")
-
-# O Render injeta variáveis de ambiente, não um secrets.toml — por isso
-# lemos de os.environ primeiro. st.secrets fica só como fallback para
-# rodar localmente com o Streamlit fora do docker-compose.
-DATABASE_URL = os.environ.get("DATABASE_URL") or st.secrets.get("DATABASE_URL", "")
-
-if not DATABASE_URL:
-    st.error("❌ DATABASE_URL não configurada.")
-    st.stop()
-
-SERIES_LABELS = {
-    "dolar_venda": "Dólar (venda)",
-    "dolar_compra": "Dólar (compra)",
-    "selic_diaria": "Selic (diária)",
-    "cdi_diaria": "CDI (diária)",
-}
-
-
-@st.cache_data(ttl=3600)
-def load_data():
-    result = urlparse(DATABASE_URL)
+@st.cache_resource
+def get_connection():
+    """
+    Conecta ao banco usando st.secrets. 
+    No Render, isso vem das Environment Variables. 
+    Localmente, vem do .env ou secrets.toml.
+    """
     conn = psycopg2.connect(
-        host=result.hostname,
-        port=result.port,
-        database=result.path[1:],  # Remove leading '/'
-        user=result.username,
-        password=result.password,
+        host=st.secrets["POSTGRES_HOST"],
+        port=st.secrets["POSTGRES_PORT"],
+        database=st.secrets["POSTGRES_DB"],
+        user=st.secrets["POSTGRES_USER"],
+        password=st.secrets["POSTGRES_PASSWORD"]
     )
-    df = pd.read_sql(
-        "SELECT serie, data, valor FROM bcb_series_data ORDER BY data", conn
+    return conn
+
+def fetch_data():
+    """Busca os dados do banco de dados."""
+    try:
+        conn = get_connection()
+        # Usamos aspas triplas para queries de múltiplas linhas
+        query = """
+            SELECT data, valor, tipo 
+            FROM cotacao_dolar_selic 
+            ORDER BY data DESC
+            LIMIT 1000;
+        """
+        df = pd.read_sql(query, conn)
+        conn.close()
+        
+        # Garantir que a coluna 'data' seja datetime para o gráfico não quebrar
+        if not df.empty:
+            df['data'] = pd.to_datetime(df['data'])
+            
+        return df
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        return pd.DataFrame(columns=['data', 'valor', 'tipo'])
+
+# --- INTERFACE DO USUÁRIO ---
+
+st.title("🏦 DolarTracker – Análise de Cotação do Dólar e Selic (5 anos)")
+
+# Carregar dados
+df = fetch_data()
+
+if df.empty:
+    st.warning("Nenhum dado encontrado no banco de dados. Certifique-se de rodar o script de ETL primeiro.")
+else:
+    # Sidebar ou Filtro na tela principal
+    st.sidebar.header("Filtros")
+    tipo_selecionado = st.sidebar.selectbox(
+        "Selecione o tipo de dado", 
+        ["Todos", "dolar", "selic"], 
+        index=0
     )
-    conn.close()
-    return df
 
+    # Lógica de filtragem (ajustada para bater com o que salvamos no banco)
+    if tipo_selecionado != "Todos":
+        # Usamos .str.lower() para evitar erro de caixa alta/baixa
+        df = df[df['tipo'].str.lower() == tipo_selecionado.lower()]
 
-try:
-    df = load_data()
+    # Layout de Colunas para métricas rápidas (Opcional - Dá um ar de BI Profissional)
+    col1, col2 = st.columns(2)
+    if not df.empty:
+        ultimo_valor = df.iloc[0]['valor']
+        ultima_data = df.iloc[0]['data'].strftime('%d/%m/%Y')
+        col1.metric("Último Valor Registrado", f"R$ {ultimo_valor:,.2f}", help=f"Data: {ultima_data}")
 
-    if df.empty:
-        st.warning("Ainda não há dados na tabela. Aguarde a primeira execução do ETL.")
-        st.stop()
+    # Exibir gráfico
+    st.subheader(f"📈 Evolução Histórica: {tipo_selecionado.capitalize()}")
+    # O Streamlit precisa que o index seja a data para o line_chart funcionar bem
+    chart_data = df.set_index('data')[['valor']]
+    st.line_chart(chart_data)
 
-    disponiveis = [s for s in SERIES_LABELS if s in df["serie"].unique()]
-    escolhidas = st.multiselect(
-        "Séries para exibir",
-        options=disponiveis,
-        default=["dolar_venda"] if "dolar_venda" in disponiveis else disponiveis[:1],
-        format_func=lambda s: SERIES_LABELS.get(s, s),
-    )
-
-    if not escolhidas:
-        st.info("Selecione ao menos uma série.")
-        st.stop()
-
-    df_filtrado = df[df["serie"].isin(escolhidas)].copy()
-    df_filtrado["serie"] = df_filtrado["serie"].map(SERIES_LABELS)
-
-    fig = px.line(
-        df_filtrado,
-        x="data",
-        y="valor",
-        color="serie",
-        labels={"data": "Data", "valor": "Valor", "serie": "Série"},
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.dataframe(
-        df_filtrado.rename(columns={"serie": "Série", "data": "Data", "valor": "Valor"}),
-        use_container_width=True,
-    )
-
-except Exception as e:
-    st.error(f"❌ Erro ao conectar ao banco: {e}")
-
-st.markdown("---")
-st.caption("Dados atualizados automaticamente 1x por dia via GitHub Actions.")
+    # Tabela de dados
+    with st.expander("🔍 Visualizar tabela de dados brutos"):
+        st.dataframe(df, use_container_width=True)

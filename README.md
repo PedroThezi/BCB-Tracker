@@ -91,6 +91,15 @@ orquestração completa.
 - Substitua as variáveis no painel do Render (não no código)
 - Use `.env` no painel de variáveis de ambiente
 
+## ⏰ Atualização automática
+
+O workflow `.github/workflows/update_bcb_series.yml` executa a ingestão diariamente
+às 03:00 UTC usando GitHub Actions, sem custo adicional para repositórios públicos.
+
+Para configurá-lo, crie o segredo `NEON_DATABASE_URL` em **Settings > Secrets and
+variables > Actions** com a connection string do projeto Neon. O workflow também
+pode ser executado manualmente pela aba **Actions**.
+
 ---
 
 > ✅ Projeto pronto para deploy, seguro e escalável.

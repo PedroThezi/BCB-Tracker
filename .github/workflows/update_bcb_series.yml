@@ -1,4 +1,4 @@
-name: Atualizar séries do BCB (dólar, Selic, CDI)
+name: Atualizar séries do BCB (dólar e Selic)
 
 on:
   schedule:
@@ -20,7 +20,12 @@ jobs:
       - name: Instalar dependências
         run: pip install -r requirements.txt
 
-      - name: Rodar ETL
+      - name: Criar tabela, se necessário
         env:
-          DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
-        run: python scripts/fetch_bcb_series.py
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: python -c "from config.database import create_tables; create_tables()"
+
+      - name: Rodar ingestão
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: python -c "from scripts.etl import load_data; load_data()"
