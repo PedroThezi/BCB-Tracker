@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: dolartracker-app
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    env:
+      - type: password
+        name: DB_PASSWORD
+        value: "your_password_here"
+    ports:
+      - port: 8501
+        protocol: http
+    healthcheck:
+      path: /health
+      interval: 30s
+      timeout: 5s
+      retries: 3

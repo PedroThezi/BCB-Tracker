@@ -1,115 +1,35 @@
-import os
-
-import pandas as pd
-import plotly.express as px
-import psycopg2
+# app/app.py
 import streamlit as st
+import pandas as pd
+import psycopg2
+from urllib.parse import urlparse
 
+st.set_page_config(page_title="Dólar Tracker", layout="centered")
 
-# ============================================================
-# CONFIGURAÇÃO DO STREAMLIT
-# ============================================================
+st.title("📈 Histórico do Dólar")
 
-st.set_page_config(
-    page_title="DolarTracker",
-    layout="wide"
-)
+# Conectar ao banco no Render (via URL de conexão)
+DATABASE_URL = st.secrets["DATABASE_URL"]  # Render seta isso automaticamente
 
-
-# ============================================================
-# CONFIGURAÇÃO DO BANCO
-# ============================================================
-
-DB_HOST = os.getenv("POSTGRES_HOST", "postgres")
-DB_PORT = os.getenv("POSTGRES_PORT", "5432")
-DB_NAME = os.getenv("POSTGRES_DB", "dolar_db")
-DB_USER = os.getenv("POSTGRES_USER", "airflow")
-DB_PASS = os.getenv("POSTGRES_PASSWORD", "airflow")
-
-
-# ============================================================
-# CONEXÃO COM POSTGRESQL
-# ============================================================
-
-@st.cache_resource
-def get_connection():
-    return psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS
+try:
+    # Parse a URL do banco
+    result = urlparse(DATABASE_URL)
+    conn = psycopg2.connect(
+        host=result.hostname,
+        port=result.port,
+        database=result.path[1:],  # Remove leading '/'
+        user=result.username,
+        password=result.password
     )
 
+    query = "SELECT data, valor FROM dolar_data ORDER BY data"
+    df = pd.read_sql(query, conn)
+    conn.close()
 
-# ============================================================
-# CARREGAMENTO DOS DADOS
-# ============================================================
+    st.dataframe(df, use_container_width=True)
 
-@st.cache_data
-def load_data():
-    conn = get_connection()
+except Exception as e:
+    st.error(f"❌ Erro ao conectar ao banco: {e}")
 
-    query = """
-        SELECT data, valor
-        FROM dolar_data
-        ORDER BY data
-    """
-
-    return pd.read_sql(query, conn)
-
-
-df = load_data()
-
-
-# ============================================================
-# TÍTULO
-# ============================================================
-
-st.title("📊 DolarTracker - Análise de Cotação do Dólar")
-
-
-# ============================================================
-# GRÁFICO
-# ============================================================
-
-st.subheader("Cotação do Dólar (BRL/USD) - Últimos 5 anos")
-
-fig = px.line(
-    df,
-    x="data",
-    y="valor",
-    title="Cotação do Dólar ao Longo do Tempo"
-)
-
-fig.update_layout(
-    xaxis_title="Data",
-    yaxis_title="Valor (R$)",
-    hovermode="x unified"
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-
-
-# ============================================================
-# ESTATÍSTICAS
-# ============================================================
-
-st.subheader("Estatísticas")
-
-st.write(df.describe())
-
-
-# ============================================================
-# DOWNLOAD
-# ============================================================
-
-st.download_button(
-    label="Baixar Dados (CSV)",
-    data=df.to_csv(index=False),
-    file_name="dolar_data.csv",
-    mime="text/csv"
-)
+st.markdown("---")
+st.caption("Dados atualizados automaticamente.")

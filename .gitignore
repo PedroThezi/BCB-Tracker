@@ -97,3 +97,5 @@ streamlit/credentials.json
 # Arquivos de configuração sensíveis
 config/*.env
 config/*.json
+
+secrets.toml
