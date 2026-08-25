@@ -1,105 +1,78 @@
-# 📊 DolarTracker - Monitoramento de Cotação do Dólar
+# BCB-Tracker
 
-Projeto de análise de dados de cotação do dólar usando Airflow, PostgreSQL e Streamlit.
+Dashboard em Streamlit para acompanhar as séries diárias de dólar e Selic do
+Banco Central do Brasil (BCB), armazenadas em PostgreSQL/Neon.
 
-## 🛠️ Funcionalidades
+## Funcionalidades
 
-- Baixa 4 séries diárias do SGS/BCB relacionadas ao câmbio: dólar (compra e
-  venda), Selic diária e CDI diária
-- Armazena em PostgreSQL em formato tidy (`serie`, `data`, `valor`)
-- Visualiza e compara as séries em tempo real com Streamlit
-- Segurança: variáveis sensíveis no `.env`, protegidas no `.gitignore`
+- Coleta dados da API SGS/BCB.
+- Persiste os dados com idempotência no PostgreSQL.
+- Disponibiliza dashboard em Streamlit.
+- Mantém uma view pivotada para análises tabulares.
+- Atualiza os dados diariamente usando GitHub Actions.
 
-## 📊 Séries incluídas
+## Séries coletadas
 
-Todas atualizam na mesma cadência do dólar (diária, dias úteis) e têm
-relação direta com o mercado de câmbio:
+| Série | Código SGS | Tipo armazenado |
+|---|---:|---|
+| Dólar comercial | 1 | `dolar` |
+| Selic diária | 11 | `selic` |
 
-| Série | Código SGS | Descrição |
-|---|---|---|
-| `dolar_venda` | 1 | Dólar comercial — venda (PTAX) |
-| `dolar_compra` | 10813 | Dólar comercial — compra (PTAX) |
-| `selic_diaria` | 11 | Selic — taxa diária (overnight) |
-| `cdi_diaria` | 12 | CDI — taxa diária (overnight) |
+## Banco de dados
 
-## 🏗️ Arquitetura: dev vs. produção
+Os dados ficam na tabela `cotacao_dolar_selic`, com as colunas `data`, `tipo` e
+`valor`. A view `cotacao_dolar_selic_pivot` apresenta o formato:
 
-O projeto roda em dois modos, por causa das limitações do plano free do Render
-(sem background workers/cron jobs nativos, web services gratuitos hibernam):
+| data | dolar | selic |
+|---|---:|---:|
 
-| | Local (dev/portfólio) | Produção (Render) |
-|---|---|---|
-| Orquestração | Airflow completo (`docker-compose.yml`) | GitHub Actions (`.github/workflows/update_bcb_series.yml`) |
-| Script de ETL | `airflow/dags/fetch_bcb_series.py` | `scripts/fetch_bcb_series.py` (standalone, mesma lógica) |
-| Banco | Postgres em container | Postgres gerenciado do Render |
-| Dashboard | Streamlit local | Streamlit como Web Service (Docker) |
+## Execução local
 
-Em produção, o GitHub Actions dispara o script de ETL 1x/dia direto no runner
-do GitHub — sem precisar de nenhum processo do Airflow rodando 24/7 no Render.
-O Airflow fica disponível para rodar localmente via Docker, demonstrando a
-orquestração completa.
+Requisitos: Docker e Docker Compose.
 
-## 📦 Requisitos
+Configure o arquivo `.env` com a connection string do Neon:
 
-- Docker
-- Docker Compose
-- Python 3.11
+```env
+DATABASE_URL=postgresql://usuario:senha@host/neondb?sslmode=require
+```
 
-## 🚀 Como Rodar Localmente
+Inicie os serviços:
 
-1. Clone o repositório:
-   ```bash
-   git clone https://github.com/seu-usuario/dolartracker.git
-   cd dolartracker
-   ```
+```bash
+docker compose up -d --build
+```
 
-2. Crie o arquivo `.env` com base no exemplo:
-   ```bash
-   cp .env.example .env
-   ```
+O dashboard estará disponível em [http://localhost:8502](http://localhost:8502).
+O PostgreSQL local é exposto em `localhost:5433`; a aplicação usa
+`DATABASE_URL` quando essa variável está configurada.
 
-3. Gere uma chave Fernet segura:
-   ```bash
-   python -c "import secrets; print(secrets.token_hex(32))"
-   ```
-   Substitua `your-fernet-key-here` no `.env`.
+Para executar a ingestão manualmente:
 
-4. Inicie os serviços:
-   ```bash
-   docker-compose up -d
-   ```
+```bash
+docker compose exec -T streamlit-app python -c "from config.database import create_tables; create_tables()"
+docker compose exec -T streamlit-app python -c "from scripts.etl import load_data; load_data()"
+```
 
-5. Acesse:
-   - Airflow: [http://localhost:8080](http://localhost:8080) (user: `airflow`, pass: `airflow`)
-   - Streamlit: [http://localhost:8501](http://localhost:8501)
+## Atualização automática
 
-## 📁 Estrutura
+O workflow
+`.github/workflows/update_bcb_series.yml` executa a ingestão diariamente às
+03:00 UTC e também pode ser iniciado manualmente pela aba **Actions**.
 
-- `airflow/dags/`: DAGs do Airflow
-- `app/`: Aplicação Streamlit
-- `docker-compose.yml`: Orquestração com Docker
-- `.env`: Variáveis sensíveis (não versionadas)
+No repositório GitHub, crie o secret `NEON_DATABASE_URL` em **Settings > Secrets
+and variables > Actions** usando a connection string do Neon.
 
-## 🔐 Segurança
+## Estrutura
 
-- Todas as variáveis sensíveis estão no `.env`
-- `.gitignore` protege arquivos sensíveis
-- Nada é commitado no GitHub
+- `app/`: dashboard Streamlit.
+- `config/database.py`: conexão e criação da tabela.
+- `scripts/fetch_bcb_series.py`: cliente da API do BCB.
+- `scripts/etl.py`: ingestão no PostgreSQL.
+- `.github/workflows/update_bcb_series.yml`: automação diária.
+- `docker-compose.yml`: execução local.
 
-## 🌐 Deploy no Render
+## Segurança
 
-- Substitua as variáveis no painel do Render (não no código)
-- Use `.env` no painel de variáveis de ambiente
-
-## ⏰ Atualização automática
-
-O workflow `.github/workflows/update_bcb_series.yml` executa a ingestão diariamente
-às 03:00 UTC usando GitHub Actions, sem custo adicional para repositórios públicos.
-
-Para configurá-lo, crie o segredo `NEON_DATABASE_URL` em **Settings > Secrets and
-variables > Actions** com a connection string do projeto Neon. O workflow também
-pode ser executado manualmente pela aba **Actions**.
-
----
-
-> ✅ Projeto pronto para deploy, seguro e escalável.
+- Não versione `.env` nem connection strings.
+- Use secrets do GitHub Actions para ambientes automatizados.
+- O arquivo `.env` está protegido pelo `.gitignore`.
