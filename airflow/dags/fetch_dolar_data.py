@@ -5,7 +5,8 @@ import psycopg2
 from psycopg2.extras import execute_batch
 import pandas as pd
 from datetime import datetime, timedelta
-
+from airflow import DAG
+from airflow.operators.python import PythonOperator
 # Ler variáveis do .env
 BCB_API_URL = os.getenv("BCB_API_URL")
 DB_CONN = os.getenv("AIRFLOW__CORE__SQL_ALCHEMY_CONN")
