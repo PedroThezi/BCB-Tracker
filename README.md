@@ -4,10 +4,23 @@ Projeto de análise de dados de cotação do dólar usando Airflow, PostgreSQL e
 
 ## 🛠️ Funcionalidades
 
-- Baixa dados diários do dólar do BCB (Banco Central do Brasil)
-- Armazena em PostgreSQL
-- Visualiza dados em tempo real com Streamlit
+- Baixa 4 séries diárias do SGS/BCB relacionadas ao câmbio: dólar (compra e
+  venda), Selic diária e CDI diária
+- Armazena em PostgreSQL em formato tidy (`serie`, `data`, `valor`)
+- Visualiza e compara as séries em tempo real com Streamlit
 - Segurança: variáveis sensíveis no `.env`, protegidas no `.gitignore`
+
+## 📊 Séries incluídas
+
+Todas atualizam na mesma cadência do dólar (diária, dias úteis) e têm
+relação direta com o mercado de câmbio:
+
+| Série | Código SGS | Descrição |
+|---|---|---|
+| `dolar_venda` | 1 | Dólar comercial — venda (PTAX) |
+| `dolar_compra` | 10813 | Dólar comercial — compra (PTAX) |
+| `selic_diaria` | 11 | Selic — taxa diária (overnight) |
+| `cdi_diaria` | 12 | CDI — taxa diária (overnight) |
 
 ## 🏗️ Arquitetura: dev vs. produção
 
@@ -16,8 +29,8 @@ O projeto roda em dois modos, por causa das limitações do plano free do Render
 
 | | Local (dev/portfólio) | Produção (Render) |
 |---|---|---|
-| Orquestração | Airflow completo (`docker-compose.yml`) | GitHub Actions (`.github/workflows/update_dolar.yml`) |
-| Script de ETL | `airflow/dags/fetch_dolar_data.py` | `scripts/fetch_dolar_data.py` (standalone, mesma lógica) |
+| Orquestração | Airflow completo (`docker-compose.yml`) | GitHub Actions (`.github/workflows/update_bcb_series.yml`) |
+| Script de ETL | `airflow/dags/fetch_bcb_series.py` | `scripts/fetch_bcb_series.py` (standalone, mesma lógica) |
 | Banco | Postgres em container | Postgres gerenciado do Render |
 | Dashboard | Streamlit local | Streamlit como Web Service (Docker) |
 

@@ -1,4 +1,4 @@
-name: Atualizar dados do dólar
+name: Atualizar séries do BCB (dólar, Selic, CDI)
 
 on:
   schedule:
@@ -23,4 +23,4 @@ jobs:
       - name: Rodar ETL
         env:
           DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
-        run: python scripts/fetch_dolar_data.py
+        run: python scripts/fetch_bcb_series.py
