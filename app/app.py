@@ -1,4 +1,5 @@
 # app/app.py
+import os
 import streamlit as st
 import pandas as pd
 import psycopg2
@@ -8,8 +9,14 @@ st.set_page_config(page_title="Dólar Tracker", layout="centered")
 
 st.title("📈 Histórico do Dólar")
 
-# Conectar ao banco no Render (via URL de conexão)
-DATABASE_URL = st.secrets["DATABASE_URL"]  # Render seta isso automaticamente
+# O Render injeta variáveis de ambiente, não um secrets.toml — por isso
+# lemos de os.environ primeiro. st.secrets fica só como fallback para
+# rodar localmente com o Streamlit fora do docker-compose.
+DATABASE_URL = os.environ.get("DATABASE_URL") or st.secrets.get("DATABASE_URL", "")
+
+if not DATABASE_URL:
+    st.error("❌ DATABASE_URL não configurada.")
+    st.stop()
 
 try:
     # Parse a URL do banco

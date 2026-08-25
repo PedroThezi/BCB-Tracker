@@ -11,4 +11,5 @@ COPY . .
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "app/app.py"]
+# O Render injeta $PORT em runtime; localmente (docker-compose) cai no 8501.
+CMD streamlit run app/app.py --server.port=${PORT:-8501} --server.address=0.0.0.0

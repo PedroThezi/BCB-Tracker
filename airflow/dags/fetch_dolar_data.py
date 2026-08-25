@@ -1,4 +1,9 @@
 # airflow/dags/fetch_dolar_data.py
+#
+# Mantida para desenvolvimento local / demonstração de orquestração via
+# docker-compose. Em produção (Render), quem roda essa mesma lógica é
+# scripts/fetch_dolar_data.py, disparado pelo GitHub Actions — ver
+# .github/workflows/update_dolar.yml.
 import os
 import requests
 import psycopg2
@@ -8,7 +13,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 # Ler variáveis do .env
-BCB_API_URL = os.getenv("BCB_API_URL")
+BCB_API_URL = os.getenv("BCB_API_URL", "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados")
 DB_CONN = os.getenv("AIRFLOW__CORE__SQL_ALCHEMY_CONN")
 
 def fetch_data_and_load():
@@ -16,9 +21,10 @@ def fetch_data_and_load():
     end_date = datetime.now().strftime("%d/%m/%Y")
     start_date = (datetime.now() - timedelta(days=1825)).strftime("%d/%m/%Y")
 
-    # Fazer requisição
-    url = f"{BCB_API_URL}?dataInicial={start_date}&dataFinal={end_date}"
-    response = requests.get(url)
+    # Fazer requisição (formato=json é obrigatório, senão a API não devolve JSON)
+    params = {"formato": "json", "dataInicial": start_date, "dataFinal": end_date}
+    response = requests.get(BCB_API_URL, params=params, timeout=30)
+    response.raise_for_status()
     data = response.json()
 
     # Transformar em DataFrame

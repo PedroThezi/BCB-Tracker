@@ -1,0 +1,26 @@
+name: Atualizar dados do dólar
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # todo dia às 03:00 UTC (00:00 horário de Brasília)
+  workflow_dispatch: {} # permite disparar manualmente pela aba Actions
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar ETL
+        env:
+          DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+        run: python scripts/fetch_dolar_data.py
