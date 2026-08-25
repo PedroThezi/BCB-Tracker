@@ -3,6 +3,7 @@ FROM python:3.11-slim
 
 # Define o working directory
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # Copia apenas o arquivo de dependências
 COPY requirements.txt .
