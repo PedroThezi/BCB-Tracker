@@ -1,0 +1,99 @@
+# .gitignore
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.development
+.env.production
+
+# Arquivos temporários
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Airflow
+airflow/airflow-webserver.log
+airflow/airflow-scheduler.log
+airflow/logs/
+airflow/airflow.db
+airflow/airflow-*.log
+
+# Streamlit
+streamlit/cookies/
+streamlit/credentials/
+streamlit/credentials.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+
+# Logs
+*.log
+
+# Arquivos de configuração sensíveis
+config/*.env
+config/*.json# .gitignore
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.development
+.env.production
+
+# Arquivos temporários
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Airflow
+airflow/airflow-webserver.log
+airflow/airflow-scheduler.log
+airflow/logs/
+airflow/airflow.db
+airflow/airflow-*.log
+
+# Streamlit
+streamlit/cookies/
+streamlit/credentials/
+streamlit/credentials.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+
+# Logs
+*.log
+
+# Arquivos de configuração sensíveis
+config/*.env
+config/*.json
