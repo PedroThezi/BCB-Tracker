@@ -28,7 +28,7 @@ def get_connection():
         raise e
 
 def create_tables():
-    """Cria a tabela necessária caso ela não exista."""
+    """Cria a tabela e a view pivotada necessárias caso não existam."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -40,6 +40,18 @@ def create_tables():
             created_at TIMESTAMP DEFAULT NOW(),
             UNIQUE(data, tipo)
         );
+    """)
+    # View pivotada usada pelo dashboard (app/app.py: fetch_pivot_data).
+    # Sem ela, o gráfico mensal falha com "relation does not exist".
+    cursor.execute("""
+        CREATE OR REPLACE VIEW cotacao_dolar_selic_pivot AS
+        SELECT
+            data,
+            MAX(CASE WHEN tipo = 'dolar' THEN valor END) AS dolar,
+            MAX(CASE WHEN tipo = 'selic' THEN valor END) AS selic
+        FROM cotacao_dolar_selic
+        GROUP BY data
+        ORDER BY data;
     """)
     conn.commit()
     cursor.close()
