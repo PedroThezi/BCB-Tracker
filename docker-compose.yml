@@ -4,7 +4,7 @@ services:
 
   # Banco PostgreSQL (local)
   postgres:
-    image: postgres:15
+    image: postgres:18
     container_name: dolartracker_postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-dolartracker_db}
@@ -13,7 +13,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_v18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-airflow_user} -d ${POSTGRES_DB:-dolartracker_db}"]
       interval: 5s
@@ -43,8 +43,9 @@ services:
       - -c
       - |
         echo 'Banco pronto!'
+        python -c "from config.database import create_tables; create_tables()"
         python -c "from scripts.etl import load_data; load_data()" &
         exec streamlit run app/app.py --server.port=8501 --server.address=0.0.0.0
 
 volumes:
-  postgres_data:
+  postgres_data_v18:
