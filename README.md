@@ -36,15 +36,15 @@ Configure o arquivo `.env` com a connection string do Neon:
 DATABASE_URL=postgresql://usuario:senha@host/neondb?sslmode=require
 ```
 
-Inicie os serviços:
+Inicie o dashboard (conectado ao Neon):
 
 ```bash
 docker compose up -d --build
 ```
 
 O dashboard estará disponível em [http://localhost:8502](http://localhost:8502).
-O PostgreSQL local é exposto em `localhost:5433`; a aplicação usa
-`DATABASE_URL` quando essa variável está configurada.
+O banco local não é iniciado pelo Docker Compose; a aplicação usa a variável
+`DATABASE_URL` do `.env` para conectar ao Neon.
 
 Para executar a ingestão manualmente:
 
@@ -69,7 +69,7 @@ and variables > Actions** usando a connection string do Neon.
 - `scripts/fetch_bcb_series.py`: cliente da API do BCB.
 - `scripts/etl.py`: ingestão no PostgreSQL.
 - `.github/workflows/update_bcb_series.yml`: automação diária.
-- `docker-compose.yml`: execução local.
+- `docker-compose.yml`: execução local do Streamlit.
 
 ## Segurança
 
