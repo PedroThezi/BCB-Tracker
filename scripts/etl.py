@@ -1,4 +1,5 @@
 import pandas as pd
+from decimal import Decimal
 from config.database import get_connection
 from scripts.fetch_bcb_series import fetch_bcb_data
 
@@ -36,8 +37,9 @@ def load_data():
             cursor.execute("""
                 INSERT INTO cotacao_dolar_selic (data, tipo, valor)
                 VALUES (%s, %s, %s)
-                ON CONFLICT (data, tipo) DO NOTHING
-            """, (row['data'].date(), row['tipo'], row['valor']))
+                ON CONFLICT (data, tipo) DO UPDATE
+                SET valor = EXCLUDED.valor
+            """, (row['data'].date(), row['tipo'], Decimal(str(row['valor']))))
         except Exception as e:
             print(f"Erro ao inserir: {e}")
 
