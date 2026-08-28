@@ -1,6 +1,6 @@
 # BCB-Tracker
 
-Dashboard em Streamlit para acompanhar as séries diárias de dólar e Selic do
+Dashboard em Streamlit para acompanhar as séries de dólar e Selic Meta do
 Banco Central do Brasil (BCB), armazenadas em PostgreSQL/Neon.
 
 ## Funcionalidades
@@ -16,14 +16,14 @@ Banco Central do Brasil (BCB), armazenadas em PostgreSQL/Neon.
 | Série | Código SGS | Tipo armazenado |
 |---|---:|---|
 | Dólar comercial | 1 | `dolar` |
-| Selic diária | 11 | `selic` |
+| Selic Meta anualizada | 432 | `selic_meta` |
 
 ## Banco de dados
 
 Os dados ficam na tabela `cotacao_dolar_selic`, com as colunas `data`, `tipo` e
 `valor`. A view `cotacao_dolar_selic_pivot` apresenta o formato:
 
-| data | dolar | selic |
+| data | dolar | selic_meta |
 |---|---:|---:|
 
 ## Execução local
@@ -36,15 +36,15 @@ Configure o arquivo `.env` com a connection string do Neon:
 DATABASE_URL=postgresql://usuario:senha@host/neondb?sslmode=require
 ```
 
-Inicie o dashboard (conectado ao Neon):
+Inicie os serviços:
 
 ```bash
 docker compose up -d --build
 ```
 
 O dashboard estará disponível em [http://localhost:8502](http://localhost:8502).
-O banco local não é iniciado pelo Docker Compose; a aplicação usa a variável
-`DATABASE_URL` do `.env` para conectar ao Neon.
+O PostgreSQL local é exposto em `localhost:5433`; a aplicação usa
+`DATABASE_URL` quando essa variável está configurada.
 
 Para executar a ingestão manualmente:
 
@@ -69,7 +69,7 @@ and variables > Actions** usando a connection string do Neon.
 - `scripts/fetch_bcb_series.py`: cliente da API do BCB.
 - `scripts/etl.py`: ingestão no PostgreSQL.
 - `.github/workflows/update_bcb_series.yml`: automação diária.
-- `docker-compose.yml`: execução local do Streamlit.
+- `docker-compose.yml`: execução local.
 
 ## Segurança
 

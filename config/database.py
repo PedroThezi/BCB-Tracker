@@ -35,23 +35,18 @@ def create_tables():
         CREATE TABLE IF NOT EXISTS cotacao_dolar_selic (
             id SERIAL PRIMARY KEY,
             data DATE NOT NULL,
-            tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('dolar', 'selic')),
-            valor DECIMAL(10,5) NOT NULL,
+            tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('dolar', 'selic', 'selic_meta')),
+            valor DECIMAL(10,4) NOT NULL,
             created_at TIMESTAMP DEFAULT NOW(),
             UNIQUE(data, tipo)
         );
     """)
     cursor.execute("""
-        DROP VIEW IF EXISTS cotacao_dolar_selic_pivot
-    """)
-    # View pivotada usada pelo dashboard (app/app.py: fetch_pivot_data).
-    # Sem ela, o gráfico mensal falha com "relation does not exist".
-    cursor.execute("""
-        CREATE OR REPLACE VIEW cotacao_dolar_selic_pivot AS
+        CREATE VIEW cotacao_dolar_selic_pivot AS
         SELECT
             data,
             MAX(CASE WHEN tipo = 'dolar' THEN valor END) AS dolar,
-            MAX(CASE WHEN tipo = 'selic' THEN valor END) AS selic
+            MAX(CASE WHEN tipo = 'selic_meta' THEN valor END) AS selic_meta
         FROM cotacao_dolar_selic
         GROUP BY data
         ORDER BY data;
