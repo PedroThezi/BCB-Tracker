@@ -1,6 +1,8 @@
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
+import time
+
 
 def fetch_bcb_data(codigo_serie: str, nome_serie: str) -> pd.DataFrame:
     """
@@ -14,38 +16,47 @@ def fetch_bcb_data(codigo_serie: str, nome_serie: str) -> pd.DataFrame:
         pd.DataFrame: DataFrame com colunas ['data', 'valor', 'tipo']
     """
     url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo_serie}/dados"
-    
+
     params = {
         "formato": "json",
         "dataInicial": (datetime.now() - timedelta(days=3652)).strftime("%d/%m/%Y"),
         "dataFinal": datetime.now().strftime("%d/%m/%Y")
     }
 
-    try:
-        response = requests.get(url, params=params, timeout=10)
-        if response.status_code != 200:
-            raise Exception(f"Erro na API: {response.status_code} - {response.text}")
+    last_error = None
 
-        data = response.json()
-        if not isinstance(data, list):
-            raise Exception(data.get("message", "Resposta inesperada da API"))
-        df = pd.DataFrame(data)
+    for attempt in range(3):
+        try:
+            response = requests.get(url, params=params, timeout=20)
+            if response.status_code != 200:
+                raise Exception(f"Erro na API: {response.status_code} - {response.text}")
 
-        # Converter data para datetime
-        df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y')
+            data = response.json()
+            if not isinstance(data, list):
+                raise Exception(data.get("message", "Resposta inesperada da API"))
 
-        # Limpar e converter valor
-        df['valor'] = pd.to_numeric(df['valor'], errors='coerce')
-        df = df.dropna(subset=['valor']).copy()
+            if not data:
+                print(f"Aviso: a série {nome_serie} (código {codigo_serie}) retornou vazio.")
+                return pd.DataFrame(columns=['data', 'valor', 'tipo'])
 
-        # Adicionar tipo
-        df['tipo'] = nome_serie
+            df = pd.DataFrame(data)
+            if 'data' not in df.columns or 'valor' not in df.columns:
+                raise ValueError(f"Formato inesperado da resposta para {nome_serie}: colunas ausentes.")
 
-        return df[['data', 'valor', 'tipo']]
+            df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', errors='coerce')
+            df['valor'] = pd.to_numeric(df['valor'], errors='coerce')
+            df = df.dropna(subset=['data', 'valor']).copy()
+            df['tipo'] = nome_serie
 
-    except Exception as e:
-        print(f"Erro ao buscar dados da série {nome_serie} (código {codigo_serie}): {e}")
-        return pd.DataFrame(columns=['data', 'valor', 'tipo'])
+            return df[['data', 'valor', 'tipo']]
+        except Exception as e:
+            last_error = e
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+
+    print(f"Erro ao buscar dados da série {nome_serie} (código {codigo_serie}): {last_error}")
+    return pd.DataFrame(columns=['data', 'valor', 'tipo'])
 
 # ==================== EXEMPLOS DE USO ====================
 if __name__ == "__main__":
