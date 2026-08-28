@@ -8,32 +8,20 @@ load_dotenv()
 def get_connection():
     """
     Retorna uma conexão com o PostgreSQL.
-    Busca as credenciais nas variáveis de ambiente (Docker ou Render).
+    Exige explicitamente DATABASE_URL para evitar tentaivas de conexão local em CI/produção.
     """
     try:
         database_url = os.getenv("DATABASE_URL")
-        if database_url:
-            conn = psycopg2.connect(database_url)
-        else:
-            postgres_host = os.getenv("POSTGRES_HOST")
-            postgres_db = os.getenv("POSTGRES_DB")
-            postgres_user = os.getenv("POSTGRES_USER")
-            postgres_password = os.getenv("POSTGRES_PASSWORD")
 
-            if not all([postgres_host, postgres_db, postgres_user, postgres_password]):
-                raise RuntimeError(
-                    "DATABASE_URL não configurada e variáveis do PostgreSQL locais não foram encontradas. "
-                    "Configure a secret NEON_DATABASE_URL no GitHub Actions."
-                )
-
-            conn = psycopg2.connect(
-                host=postgres_host,
-                port=os.getenv("POSTGRES_PORT", "5432"),
-                database=postgres_db,
-                user=postgres_user,
-                password=postgres_password
+        if not database_url:
+            raise RuntimeError(
+                "DATABASE_URL não configurada. "
+                "Em desenvolvimento use o arquivo .env local; em GitHub Actions use a secret NEON_DATABASE_URL. "
+                "Não há fallback para localhost."
             )
-        return conn
+
+        return psycopg2.connect(database_url)
+
     except Exception as e:
         print(f"❌ Erro ao conectar ao banco de dados: {e}")
         raise e
