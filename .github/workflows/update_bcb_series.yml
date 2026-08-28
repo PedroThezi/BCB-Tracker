@@ -8,10 +8,11 @@ on:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
     env:
-      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL || secrets.DATABASE_URL || vars.NEON_DATABASE_URL || vars.DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v5
@@ -24,7 +25,7 @@ jobs:
       - name: Validar DATABASE_URL
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "ERRO: configure NEON_DATABASE_URL ou DATABASE_URL em Secrets ou Variables do repositório."
+            echo "ERRO: configure NEON_DATABASE_URL como secret do Environment production."
             exit 1
           fi
 
