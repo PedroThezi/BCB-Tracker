@@ -19,7 +19,7 @@ def fetch_bcb_data(codigo_serie: str, nome_serie: str) -> pd.DataFrame:
 
     params = {
         "formato": "json",
-        "dataInicial": (datetime.now() - timedelta(days=3652)).strftime("%d/%m/%Y"),
+        "dataInicial": (datetime.now() - timedelta(days=365 * 2)).strftime("%d/%m/%Y"),
         "dataFinal": datetime.now().strftime("%d/%m/%Y")
     }
 

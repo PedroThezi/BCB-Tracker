@@ -1,5 +1,6 @@
 import pandas as pd
-from config.database import get_connection
+from sqlalchemy import text
+from config.database import get_engine
 from scripts.fetch_bcb_series import fetch_bcb_data
 
 def load_data():
@@ -31,21 +32,22 @@ def load_data():
     combined_df = combined_df.sort_values('data').reset_index(drop=True)
 
     # Conectar ao banco e carregar
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    for _, row in combined_df.iterrows():
-        try:
-            cursor.execute("""
+    engine = get_engine()
+    with engine.begin() as conn:
+        for _, row in combined_df.iterrows():
+            try:
+                conn.execute(text("""
                 INSERT INTO cotacao_dolar_selic (data, tipo, valor)
-                VALUES (%s, %s, %s)
+                VALUES (:data, :tipo, :valor)
                 ON CONFLICT (data, tipo) DO NOTHING
-            """, (row['data'].date(), row['tipo'], row['valor']))
-        except Exception as e:
-            print(f"Erro ao inserir: {e}")
+                """), {
+                    'data': row['data'].date(),
+                    'tipo': row['tipo'],
+                    'valor': row['valor']
+                })
+            except Exception as e:
+                print(f"Erro ao inserir: {e}")
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+    engine.dispose()
 
     print(f"Dados carregados com sucesso! Total de registros: {len(combined_df)}")
