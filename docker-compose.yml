@@ -1,51 +1,17 @@
-
-
 services:
-
-  # Banco PostgreSQL (local)
-  postgres:
-    image: postgres:18
-    container_name: dolartracker_postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-dolartracker_db}
-      POSTGRES_USER: ${POSTGRES_USER:-airflow_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecret}
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data_v18:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-airflow_user} -d ${POSTGRES_DB:-dolartracker_db}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
   # Aplicação Streamlit (app)
   streamlit-app:
     build: .
     container_name: dolartracker_app
     ports:
       - "8502:8501"
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL:-}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB:-dolartracker_db}
-      POSTGRES_USER: ${POSTGRES_USER:-airflow_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecret}
+      DATABASE_URL: ${DATABASE_URL:?Configure DATABASE_URL in .env}
     restart: unless-stopped
     command:
       - sh
       - -c
       - |
-        echo 'Banco pronto!'
         python -c "from config.database import create_tables; create_tables()"
         python -c "from scripts.etl import load_data; load_data()" &
         exec streamlit run app/app.py --server.port=8501 --server.address=0.0.0.0
-
-volumes:
-  postgres_data_v18:

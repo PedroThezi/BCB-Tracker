@@ -41,6 +41,7 @@ def create_tables():
             UNIQUE(data, tipo)
         );
     """)
+    cursor.execute("DROP VIEW IF EXISTS cotacao_dolar_selic_pivot;")
     cursor.execute("""
         CREATE VIEW cotacao_dolar_selic_pivot AS
         SELECT
@@ -49,6 +50,7 @@ def create_tables():
             MAX(CASE WHEN tipo = 'selic_meta' THEN valor END) AS selic_meta
         FROM cotacao_dolar_selic
         GROUP BY data
+        HAVING COUNT(*) > 0
         ORDER BY data;
     """)
     conn.commit()
