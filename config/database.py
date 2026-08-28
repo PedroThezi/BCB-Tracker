@@ -1,7 +1,9 @@
 import os
 import re
+import socket
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
 # Carrega o arquivo .env apenas se estiver rodando localmente
 load_dotenv()
@@ -28,6 +30,29 @@ def normalize_database_url(database_url):
     return normalized
 
 
+def prefer_ipv4(database_url):
+    """Adiciona o primeiro IPv4 resolvido sem substituir o hostname do banco."""
+    url = make_url(database_url)
+
+    if not url.host:
+        return database_url
+
+    try:
+        addresses = socket.getaddrinfo(
+            url.host,
+            url.port or 5432,
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM
+        )
+    except socket.gaierror:
+        return database_url
+
+    if not addresses:
+        return database_url
+
+    return str(url.update_query_dict({'hostaddr': addresses[0][4][0]}))
+
+
 def get_engine():
     """Cria um engine SQLAlchemy usando exclusivamente DATABASE_URL."""
     database_url = os.getenv("DATABASE_URL")
@@ -40,7 +65,7 @@ def get_engine():
         )
 
     return create_engine(
-        normalize_database_url(database_url),
+        prefer_ipv4(normalize_database_url(database_url)),
         pool_pre_ping=True
     )
 
