@@ -1165,7 +1165,7 @@ else:
 
                 lambda row: (
 
-                    f"R$ {row['valor']:,.4f}"
+                    f"R$ {row['valor']:,.2f}"
 
                     if row['tipo'] == 'Dólar'
 
