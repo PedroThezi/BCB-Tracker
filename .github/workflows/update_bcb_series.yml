@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL || secrets.DATABASE_URL || vars.NEON_DATABASE_URL || vars.DATABASE_URL }}
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v5
@@ -20,11 +22,9 @@ jobs:
           python-version: "3.11"
 
       - name: Validar DATABASE_URL
-        env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "ERRO: configure o secret NEON_DATABASE_URL ou DATABASE_URL no repositório."
+            echo "ERRO: configure NEON_DATABASE_URL ou DATABASE_URL em Secrets ou Variables do repositório."
             exit 1
           fi
 
@@ -34,11 +34,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Criar tabela, se necessário
-        env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL || secrets.DATABASE_URL }}
         run: python -c "from config.database import create_tables; create_tables()"
 
       - name: Rodar ingestão
-        env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL || secrets.DATABASE_URL }}
         run: python -c "from scripts.etl import load_data; load_data()"
