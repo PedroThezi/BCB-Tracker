@@ -21,10 +21,10 @@ jobs:
 
       - name: Validar DATABASE_URL
         env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "ERRO: a secret NEON_DATABASE_URL não está configurada no repositório."
+            echo "ERRO: configure o secret NEON_DATABASE_URL ou DATABASE_URL no repositório."
             exit 1
           fi
 
@@ -35,10 +35,10 @@ jobs:
 
       - name: Criar tabela, se necessário
         env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL || secrets.DATABASE_URL }}
         run: python -c "from config.database import create_tables; create_tables()"
 
       - name: Rodar ingestão
         env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL || secrets.DATABASE_URL }}
         run: python -c "from scripts.etl import load_data; load_data()"
