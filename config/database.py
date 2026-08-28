@@ -15,12 +15,23 @@ def get_connection():
         if database_url:
             conn = psycopg2.connect(database_url)
         else:
+            postgres_host = os.getenv("POSTGRES_HOST")
+            postgres_db = os.getenv("POSTGRES_DB")
+            postgres_user = os.getenv("POSTGRES_USER")
+            postgres_password = os.getenv("POSTGRES_PASSWORD")
+
+            if not all([postgres_host, postgres_db, postgres_user, postgres_password]):
+                raise RuntimeError(
+                    "DATABASE_URL não configurada e variáveis do PostgreSQL locais não foram encontradas. "
+                    "Configure a secret NEON_DATABASE_URL no GitHub Actions."
+                )
+
             conn = psycopg2.connect(
-                host=os.getenv("POSTGRES_HOST", "localhost"),
+                host=postgres_host,
                 port=os.getenv("POSTGRES_PORT", "5432"),
-                database=os.getenv("POSTGRES_DB", "dolartracker_db"),
-                user=os.getenv("POSTGRES_USER", "airflow_user"),
-                password=os.getenv("POSTGRES_PASSWORD", "supersecret")
+                database=postgres_db,
+                user=postgres_user,
+                password=postgres_password
             )
         return conn
     except Exception as e:

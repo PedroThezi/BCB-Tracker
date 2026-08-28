@@ -25,6 +25,9 @@ def load_data():
 
     # Concatenar todos os dados
     combined_df = pd.concat(all_data, ignore_index=True)
+    if combined_df.empty:
+        raise RuntimeError("Nenhum dado válido foi retornado pela API do BCB para as séries configuradas.")
+
     combined_df = combined_df.sort_values('data').reset_index(drop=True)
 
     # Conectar ao banco e carregar
