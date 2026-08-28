@@ -59,8 +59,9 @@ O workflow
 `.github/workflows/update_bcb_series.yml` executa a ingestão diariamente às
 03:00 UTC e também pode ser iniciado manualmente pela aba **Actions**.
 
-No repositório GitHub, crie o secret `NEON_DATABASE_URL` (ou `DATABASE_URL`) em
-**Settings > Secrets and variables > Actions** usando a connection string do Neon.
+No repositório GitHub, configure `NEON_DATABASE_URL` (ou `DATABASE_URL`) em
+**Settings > Secrets and variables > Actions** como **Secret** (recomendado) ou
+**Variable**, usando a connection string do Neon.
 
 ## Estrutura
 
