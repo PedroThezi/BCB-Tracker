@@ -18,28 +18,11 @@ def fetch_data():
     try:
         conn = get_connection()
         query = """
-            SELECT data,
-                   dolar,
-                   CASE
-                       WHEN selic_meta IS NOT NULL THEN selic_meta
-                       ELSE selic
-                   END AS selic_meta
+            SELECT data, dolar, selic_meta
             FROM cotacao_dolar_selic_pivot
             ORDER BY data;
         """
-        try:
-            df = pd.read_sql(query, conn)
-        except Exception:
-            # Compatibilidade com a view antiga, que ainda expõe somente `selic`.
-            conn.rollback()
-            df = pd.read_sql(
-                """
-                    SELECT data, dolar, selic AS selic_meta
-                    FROM cotacao_dolar_selic_pivot
-                    ORDER BY data;
-                """,
-                conn
-            )
+        df = pd.read_sql(query, conn)
 
         if not df.empty:
             df['data'] = pd.to_datetime(df['data'])
@@ -88,10 +71,6 @@ def build_chart(df, granularity='mes'):
 
     if df_plot.empty:
         return None
-
-    # A taxa permanece válida até a próxima atualização; preenche antes do
-    # recorte para carregar também a última taxa publicada antes da janela.
-    df_plot['selic_meta'] = df_plot['selic_meta'].ffill()
 
     data_max = df_plot.index.max()
     janela_dias = {'semana': 7, 'mes': 30, 'ano': 365}[granularity]
