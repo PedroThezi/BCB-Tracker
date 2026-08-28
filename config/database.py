@@ -1,9 +1,7 @@
 import os
 import re
-import socket
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
 
 # Carrega o arquivo .env apenas se estiver rodando localmente
 load_dotenv()
@@ -30,42 +28,27 @@ def normalize_database_url(database_url):
     return normalized
 
 
-def prefer_ipv4(database_url):
-    """Adiciona o primeiro IPv4 resolvido sem substituir o hostname do banco."""
-    url = make_url(database_url)
-
-    if not url.host:
-        return database_url
-
-    try:
-        addresses = socket.getaddrinfo(
-            url.host,
-            url.port or 5432,
-            family=socket.AF_INET,
-            type=socket.SOCK_STREAM
-        )
-    except socket.gaierror:
-        return database_url
-
-    if not addresses:
-        return database_url
-
-    return str(url.update_query_dict({'hostaddr': addresses[0][4][0]}))
-
-
 def get_engine():
-    """Cria um engine SQLAlchemy usando exclusivamente DATABASE_URL."""
-    database_url = os.getenv("DATABASE_URL")
+    """Cria um engine SQLAlchemy usando exclusivamente DATABASE_URL.
+
+    Não forçamos IPv4 via `hostaddr`: o endpoint do Neon é um pooler que
+    resolve para IPs diferentes ao longo do tempo (balanceamento), então
+    fixar um IP nessa etapa é frágil por natureza — já causou tanto erro
+    de roteamento (SNI x options) quanto falha de autenticação em IPs
+    diferentes. Deixamos o driver resolver e conectar pelo hostname
+    normalmente, do mesmo jeito que já foi validado manualmente.
+    """
+    database_url = os.getenv("DATABASE_URL") or os.getenv("NEON_DATABASE_URL")
 
     if not database_url:
         raise RuntimeError(
             "DATABASE_URL não configurada. "
-            "Em desenvolvimento use o arquivo .env local; em GitHub Actions use a secret NEON_DATABASE_URL. "
+            "Configure DATABASE_URL ou NEON_DATABASE_URL no ambiente do serviço. "
             "Não há fallback para localhost."
         )
 
     return create_engine(
-        prefer_ipv4(normalize_database_url(database_url)),
+        normalize_database_url(database_url),
         pool_pre_ping=True
     )
 
