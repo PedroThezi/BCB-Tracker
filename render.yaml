@@ -6,9 +6,17 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /_stcore/health
+    healthCheckPath: /
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: dolartracker-db
+          property: connectionString
       - key: BCB_API_URL
         value: https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados
+
+databases:
+  - name: dolartracker-db
+    plan: free
+    databaseName: dolar_db
+    user: dolartracker

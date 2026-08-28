@@ -53,9 +53,9 @@ if __name__ == "__main__":
     dolar_data = fetch_bcb_data("1", "dolar")
     print("Dólar coletado:", len(dolar_data), "registros")
 
-    # Coletar Selic (Série 11)
-    selic_data = fetch_bcb_data("11", "selic")
-    print("Selic coletada:", len(selic_data), "registros")
+    # Coletar Selic meta anualizada (Série 432)
+    selic_data = fetch_bcb_data("432", "selic_meta")
+    print("Selic Meta coletada:", len(selic_data), "registros")
 
     # Juntar
     combined = pd.concat([dolar_data, selic_data], ignore_index=True)
