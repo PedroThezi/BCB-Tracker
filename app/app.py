@@ -3,6 +3,7 @@ import streamlit.components.v1 as components
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from sqlalchemy import text
 from config.database import get_connection as database_connection
 
 
@@ -38,7 +39,7 @@ def fetch_data():
             ORDER BY data;
         """
 
-        df = pd.read_sql(query, conn)
+        df = pd.read_sql(text(query), conn)
 
         if not df.empty:
             df['data'] = pd.to_datetime(df['data'])
