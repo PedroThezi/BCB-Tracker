@@ -3,51 +3,49 @@ from sqlalchemy import text
 from config.database import get_engine
 from scripts.fetch_bcb_series import fetch_bcb_data
 
+
+# (código SGS, tipo armazenado). Selic Meta (432) é a taxa alvo anualizada
+# definida pelo Copom, não a taxa over diária.
+SERIES = [
+    ("1", "dolar"),
+    ("432", "selic_meta"),
+]
+
+
 def load_data():
-    """
-    Carrega dados do dólar e da selic usando o script único.
-    """
+    """Coleta cada série no BCB e faz upsert idempotente no PostgreSQL."""
     print("Iniciando ETL...")
 
-    # Lista de séries para coletar
-    series = [
-        ("1", "dolar"),
-        ("432", "selic_meta")  # Selic meta anualizada (% a.a.), definida pelo Copom
-    ]
+    frames = [fetch_bcb_data(codigo, nome) for codigo, nome in SERIES]
+    valid = [df for df in frames if not df.empty]
 
-    all_data = []
-    for codigo, nome in series:
-        df = fetch_bcb_data(codigo, nome)
-        if not df.empty:
-            all_data.append(df)
-
-    if not all_data:
+    if not valid:
         raise RuntimeError("Nenhuma série foi coletada do BCB")
 
-    # Concatenar todos os dados
-    combined_df = pd.concat(all_data, ignore_index=True)
-    if combined_df.empty:
-        raise RuntimeError("Nenhum dado válido foi retornado pela API do BCB para as séries configuradas.")
+    combined_df = (
+        pd.concat(valid, ignore_index=True)
+        .sort_values('data')
+        .reset_index(drop=True)
+    )
 
-    combined_df = combined_df.sort_values('data').reset_index(drop=True)
+    # psycopg formata `date`/`numeric` a partir de Python `datetime`/`Decimal`
+    # (ou strings ISO), então convertemos explicitamente para evitar
+    # ambiguidade de tipo no lado do driver.
+    rows = [
+        {'data': d.date(), 'tipo': t, 'valor': float(v)}
+        for d, t, v in combined_df[['data', 'tipo', 'valor']].itertuples(index=False, name=None)
+    ]
 
-    # Conectar ao banco e carregar
     engine = get_engine()
     with engine.begin() as conn:
-        for _, row in combined_df.iterrows():
-            try:
-                conn.execute(text("""
-                INSERT INTO cotacao_dolar_selic (data, tipo, valor)
-                VALUES (:data, :tipo, :valor)
-                ON CONFLICT (data, tipo) DO NOTHING
-                """), {
-                    'data': row['data'].date(),
-                    'tipo': row['tipo'],
-                    'valor': row['valor']
-                })
-            except Exception as e:
-                print(f"Erro ao inserir: {e}")
-
+        conn.execute(
+            text("""
+            INSERT INTO cotacao_dolar_selic (data, tipo, valor)
+            VALUES (:data, :tipo, :valor)
+            ON CONFLICT (data, tipo) DO NOTHING
+            """),
+            rows
+        )
     engine.dispose()
 
     print(f"Dados carregados com sucesso! Total de registros: {len(combined_df)}")

@@ -1,13 +1,13 @@
-# .gitignore
-
 # Variáveis de ambiente
 .env
 .env.local
 .env.development
 .env.production
-.claude
+.claude/
 claude.md
-# Arquivos temporários
+secrets.toml
+
+# Cache e artefatos Python
 __pycache__/
 *.pyc
 *.pyo
@@ -32,9 +32,8 @@ airflow/airflow.db
 airflow/airflow-*.log
 
 # Streamlit
-streamlit/cookies/
-streamlit/credentials/
-streamlit/credentials.json
+.streamlit/secrets.toml
+.streamlit/credentials/
 
 # IDE
 .idea/
@@ -46,57 +45,6 @@ streamlit/credentials.json
 # Logs
 *.log
 
-# Arquivos de configuração sensíveis
-config/*.env
-config/*.json# .gitignore
-
-# Variáveis de ambiente
-.env
-.env.local
-.env.development
-.env.production
-
-# Arquivos temporários
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Docker
-.dockerignore
-docker-compose.override.yml
-.docker/
-
-# Airflow
-airflow/airflow-webserver.log
-airflow/airflow-scheduler.log
-airflow/logs/
-airflow/airflow.db
-airflow/airflow-*.log
-
-# Streamlit
-streamlit/cookies/
-streamlit/credentials/
-streamlit/credentials.json
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*.DS_Store
-
-# Logs
-*.log
-
-# Arquivos de configuração sensíveis
+# Configs sensíveis
 config/*.env
 config/*.json
-
-secrets.toml
