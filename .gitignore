@@ -6,6 +6,7 @@
 .env.development
 .env.production
 .claude
+claude.md
 # Arquivos temporários
 __pycache__/
 *.pyc
