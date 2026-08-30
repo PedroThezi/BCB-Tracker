@@ -1,4 +1,4 @@
-# Use Python 3.11 slim for ETL scripts
+# Use Python 3.11 slim
 FROM python:3.11-slim
 
 # Define o working directory
@@ -14,5 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia todo o código
 COPY . .
 
-# Comando padrão: roda ETL e cria tabelas
-CMD ["sh", "-c", "python -c \"from config.database import create_tables; create_tables()\" && python -c \"from scripts.etl import load_data; load_data()\""]
+# Expõe a porta do Streamlit
+EXPOSE 8501
+
+# Comando para rodar o app
+CMD ["streamlit", "run", "app/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

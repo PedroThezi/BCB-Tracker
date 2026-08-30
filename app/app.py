@@ -122,7 +122,8 @@ def compute_axis_settings(
             day=1
         )
 
-    else:
+
+    else:  # mes
 
         tick_format = '%m/%y'
 
@@ -166,6 +167,7 @@ def build_chart(
 
     mes:
         últimos 30 dias
+
 
     acumulado:
         média mensal de todo o período
@@ -231,7 +233,7 @@ def build_chart(
 
         janela_dias = {
             'semana': 7,
-            'mes': 30
+            'mes': 30,
         }[granularity]
 
         data_inicio_janela = (
@@ -262,6 +264,8 @@ def build_chart(
             'Últimos 7 dias'
             if granularity == 'semana'
             else 'Últimos 30 dias'
+            if granularity == 'mes'
+            else 'Últimos 365 dias'
         )
 
     if aggregated.empty:
@@ -644,8 +648,7 @@ def build_chart(
     )
 
     # =========================================================
-    # ACUMULADO:
-    # RANGE SLIDER + ZOOM INICIAL
+    # ACUMULADO: range slider + scroll horizontal
     # =========================================================
 
     if granularity == 'acumulado':
@@ -670,7 +673,7 @@ def build_chart(
         # Pequeno espaço antes e depois dos dados
         range=[
             data_inicio_zoom,
-            data_max 
+            data_max
         ],
 
         fixedrange=False,
@@ -679,42 +682,11 @@ def build_chart(
             'visible': True,
             'thickness': 0.015,
             'borderwidth': 1
-        },
-
-        rangeselector={
-            'buttons': [
-                dict(
-                    count=12,
-                    label='1 ano',
-                    step='month',
-                    stepmode='backward'
-                ),
-                dict(
-                    count=24,
-                    label='2 anos',
-                    step='month',
-                    stepmode='backward'
-                ),
-                dict(
-                    count=36,
-                    label='3 anos',
-                    step='month',
-                    stepmode='backward'
-                ),
-                dict(
-                    step='all',
-                    label='Tudo'
-                )
-            ],
-            'x': 0,
-            'y': 1.12,
-            'xanchor': 'left',
-            'yanchor': 'top'
         }
     )
 
     # =========================================================
-    # SEMANA / MÊS
+    # SEMANA / MÊS: zoom fixo (sem scroll)
     # =========================================================
 
     else:
@@ -793,7 +765,7 @@ def build_chart(
 # =============================================================
 
 st.title(
-    "🏦 DolarTracker – Análise de Cotação do Dólar e Selic Meta (5 anos)"
+    "🏦 DolarTracker – Análise de Cotação do Dólar e Selic Meta (10 anos)"
 )
 
 
