@@ -3,12 +3,17 @@ import re
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
-# Carrega o arquivo .env apenas se estiver rodando localmente
+# Carrega o .env apenas em execução local; em CI/containers a config vem do ambiente.
 load_dotenv()
 
 
 def normalize_database_url(database_url):
-    """Normaliza a URL do PostgreSQL antes de criar o engine SQLAlchemy."""
+    """Normaliza a URL do PostgreSQL antes de criar o engine SQLAlchemy.
+
+    - Remove aspas e espaços acidentais.
+    - Descarta `channel_binding` (psycopg não aceita via string de conexão).
+    - Força o driver `psycopg` (v3) para um esquema `postgresql://`.
+    """
     if not database_url:
         return database_url
 
@@ -29,14 +34,12 @@ def normalize_database_url(database_url):
 
 
 def get_engine():
-    """Cria um engine SQLAlchemy usando exclusivamente DATABASE_URL.
+    """Cria um engine SQLAlchemy a partir de DATABASE_URL (ou NEON_DATABASE_URL).
 
-    Não forçamos IPv4 via `hostaddr`: o endpoint do Neon é um pooler que
-    resolve para IPs diferentes ao longo do tempo (balanceamento), então
-    fixar um IP nessa etapa é frágil por natureza — já causou tanto erro
-    de roteamento (SNI x options) quanto falha de autenticação em IPs
-    diferentes. Deixamos o driver resolver e conectar pelo hostname
-    normalmente, do mesmo jeito que já foi validado manualmente.
+    Não há fallback para localhost: em CI/produção, a falta da variável é um
+    erro de configuração e deve falhar imediatamente. O pooler do Neon faz
+    balanceamento por DNS, então conectamos sempre pelo hostname (sem
+    `hostaddr` fixo) para evitar SNI/IP inconsistentes entre requisições.
     """
     database_url = os.getenv("DATABASE_URL") or os.getenv("NEON_DATABASE_URL")
 
@@ -54,19 +57,12 @@ def get_engine():
 
 
 def get_connection():
-    """
-    Retorna uma conexão com o PostgreSQL.
-    Exige explicitamente DATABASE_URL para evitar tentaivas de conexão local em CI/produção.
-    """
-    try:
-        return get_engine().connect()
+    """Abre uma conexão com o PostgreSQL, exigindo DATABASE_URL explícita."""
+    return get_engine().connect()
 
-    except Exception as e:
-        print(f"❌ Erro ao conectar ao banco de dados: {e}")
-        raise e
 
 def create_tables():
-    """Cria a tabela e a view pivotada necessárias caso não existam."""
+    """Cria a tabela `cotacao_dolar_selic` e a view pivotada, se ausentes."""
     engine = get_engine()
     with engine.begin() as conn:
         conn.execute(text("""
@@ -79,9 +75,8 @@ def create_tables():
             UNIQUE(data, tipo)
         );
         """))
-        conn.execute(text("DROP VIEW IF EXISTS cotacao_dolar_selic_pivot;"))
         conn.execute(text("""
-        CREATE VIEW cotacao_dolar_selic_pivot AS
+        CREATE OR REPLACE VIEW cotacao_dolar_selic_pivot AS
         SELECT
             data,
             MAX(CASE WHEN tipo = 'dolar' THEN valor END) AS dolar,

@@ -2,8 +2,8 @@ name: Atualizar séries do BCB (dólar e Selic)
 
 on:
   schedule:
-    - cron: "0 3 * * *" # todo dia às 03:00 UTC (00:00 horário de Brasília)
-  workflow_dispatch: {} # permite disparar manualmente pela aba Actions
+    - cron: "0 3 * * *" # 03:00 UTC diário (00:00 BRT)
+  workflow_dispatch: {} # permite disparo manual pela aba Actions
 
 jobs:
   fetch:
