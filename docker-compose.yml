@@ -1,17 +1,23 @@
 services:
-  # Aplicação Streamlit (app)
-  streamlit-app:
-    build: .
-    container_name: dolartracker_app
-    ports:
-      - "8502:8501"
-    environment:
-      DATABASE_URL: ${DATABASE_URL:?Configure DATABASE_URL in .env}
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    hostname: metabase
     restart: unless-stopped
-    command:
-      - sh
-      - -c
-      - |
-        python -c "from config.database import create_tables; create_tables()"
-        python -c "from scripts.etl import load_data; load_data()" &
-        exec streamlit run app/app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      JAVA_TIMEZONE: America/Sao_Paulo
+      # Sem isso, o banco H2 (onde o Metabase guarda dashboards, usuários e
+      # conexões salvas) fica dentro do container e some se ele for recriado.
+      MB_DB_FILE: /metabase-data/metabase.db
+    volumes:
+      - metabase_data:/metabase-data
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail -I http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  metabase_data:
