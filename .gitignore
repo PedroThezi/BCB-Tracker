@@ -2,8 +2,11 @@
 .env
 .env.*
 !.env.example
-.claude
-claude.md
+
+# Claude / ferramentas locais
+.claude/
+CLAUDE.md
+
 # Cache e artefatos Python
 __pycache__/
 *.pyc
