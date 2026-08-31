@@ -6,14 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BCB-Tracker is a data pipeline and dashboard for tracking Brazilian Central Bank (BCB) series: **Dólar Comercial (SGS 1)** and **Selic Meta Anualizada (SGS 432)**. Data is fetched from the public BCB API, stored in PostgreSQL (Neon), and visualized via a Streamlit dashboard. A daily GitHub Actions workflow keeps the data up to date.
 
-The project has recently migrated from a Streamlit-only deployment to include **Metabase** for BI dashboards (see `docker-compose.yml`).
-
 ## Architecture
 
 ```
 BCB-Tracker/
+├── main.py                    # Streamlit entrypoint: page config + main() orchestration
 ├── app/
-│   └── app.py                 # Streamlit dashboard ( Plotly charts, metrics, stats table)
+│   ├── __init__.py            # Marca `app/` como pacote Python
+│   ├── data.py                # Data access (fetch_data, build_long_df)
+│   └── views.py               # UI: tokens, formatters, charts, renderers, CSS
 ├── config/
 │   └── database.py            # SQLAlchemy engine, connection, table/view creation
 ├── scripts/
@@ -21,8 +22,10 @@ BCB-Tracker/
 │   └── etl.py                 # Orchestrates fetch → upsert into PostgreSQL
 ├── .github/workflows/
 │   └── update_bcb_series.yml  # Daily 03:00 UTC scheduled run
-├── docker-compose.yml         # Metabase service (port 3000)
-├── Dockerfile                 # Python 3.11 slim for ETL scripts
+├── .streamlit/
+│   └── config.toml            # Streamlit theme (light mode)
+├── docker-compose.yml         # streamlit-app service (port 8502)
+├── Dockerfile                 # Python 3.11 slim for the Streamlit app
 ├── requirements.txt           # Python dependencies
 └── .env                       # DATABASE_URL (not committed)
 ```
@@ -32,8 +35,8 @@ BCB-Tracker/
 1. **Fetch**: `scripts/fetch_bcb_series.py` → calls BCB API (`https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados`) for last 10 years
 2. **Transform**: Normalizes dates (`%d/%m/%Y`), coerces numeric values, adds `tipo` column (`dolar` / `selic_meta`)
 3. **Load**: `scripts/etl.py` → upserts into `cotacao_dolar_selic` table using `ON CONFLICT (data, tipo) DO NOTHING`
-4. **View**: `config/database.py` creates `cotacao_dolar_selic_pivot` view with columns `data`, `dolar`, `selic_meta`
-5. **Visualize**: Streamlit dashboard (`app/app.py`) reads from pivot view, offers 3 granularities (Semana/Mês/Acumulado), Plotly dual-axis charts
+4. **View**: `config/database.py` creates `cotacao_dolar_selic_pivot` view with columns `data`, `dolar`, `selic_meta`, `dolar_variacao`, `selic_meta_variacao` (the last two via `LAG()`)
+5. **Visualize**: Streamlit dashboard (`app/app.py`) reads from the pivot view, offers 3 granularities (Semana/Mês/Acumulado), Plotly dual-axis charts
 
 ### Database Schema
 
@@ -42,7 +45,7 @@ BCB-Tracker/
 cotacao_dolar_selic (
     id SERIAL PRIMARY KEY,
     data DATE NOT NULL,
-    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('dolar', 'selic', 'selic_meta')),
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('dolar', 'selic_meta')),
     valor DECIMAL(10,4) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(data, tipo)
@@ -52,7 +55,9 @@ cotacao_dolar_selic (
 cotacao_dolar_selic_pivot (
     data,
     dolar,
-    selic_meta
+    selic_meta,
+    dolar_variacao,
+    selic_meta_variacao
 )
 ```
 
@@ -61,14 +66,12 @@ cotacao_dolar_selic_pivot (
 ### Local Development (Docker)
 
 ```bash
-# Start Metabase (BI dashboard on port 3000)
+# Start the Streamlit dashboard
 docker compose up -d --build
 
-# Run ETL manually (create tables + fetch/load data)
+# Run ETL manually (inside the running container)
 docker compose exec -T streamlit-app python -c "from config.database import create_tables; create_tables()"
 docker compose exec -T streamlit-app python -c "from scripts.etl import load_data; load_data()"
-
-# Streamlit app would run on port 8502 (if streamlit-app service existed in compose)
 ```
 
 ### Python Environment
@@ -89,12 +92,12 @@ python -c "from scripts.fetch_bcb_series import fetch_bcb_data; print(fetch_bcb_
 
 ```bash
 # Requires DATABASE_URL in .env
-streamlit run app/app.py
+streamlit run main.py
 ```
 
 ### GitHub Actions
 
-The workflow `.github/workflows/update_bcb_series.yml` runs daily at 03:00 UTC. It requires `NEON_DATABASE_URL` secret configured in the `production` environment.
+The workflow `.github/workflows/update_bcb_series.yml` runs daily at 03:00 UTC. It requires `NEON_DATABASE_URL` secret configured in the `production` environment. ETL **only** runs in CI; the Streamlit container assumes the data is already loaded.
 
 ## Key Implementation Details
 
@@ -114,12 +117,12 @@ The workflow `.github/workflows/update_bcb_series.yml` runs daily at 03:00 UTC. 
 - Upserts row-by-row with `ON CONFLICT (data, tipo) DO NOTHING` for idempotency
 - Prints total records loaded
 
-### Streamlit Dashboard (`app/app.py`)
+### Streamlit Dashboard (`main.py` + `app/views.py`)
 - **Three granularities**: `semana` (7 days), `mes` (30 days), `acumulado` (monthly average of all data)
-- **Dual-axis Plotly chart**: Dólar (left, spline smoothing) + Selic Meta (right, step/hline shape)
-- **Selic change detection** in week/month views: only plots points where Selic value changes
+- **Dual Plotly charts**: Dólar (spline) + Selic Meta (step), both with markers and variation % in the hover
+- **Selic change detection** in week/month views: only plots points where the Selic value changes
 - **Statistics table**: count, mean, min, Q1, median, Q3, max, std per series
-- **Dark theme** (`paper_bgcolor='#000000'`, `plot_bgcolor='#000000'`)
+- **Light theme** (`paper_bgcolor='#ffffff'`, `plot_bgcolor='#ffffff'`); the global theme is set via `.streamlit/config.toml`
 
 ## Environment Variables
 
@@ -135,19 +138,16 @@ The workflow `.github/workflows/update_bcb_series.yml` runs daily at 03:00 UTC. 
 No formal test suite exists. Manual verification:
 1. Run ETL → check `cotacao_dolar_selic` table has recent data
 2. Run Streamlit → verify charts render, metrics show latest values
-3. Check Metabase at `http://localhost:3000` (after docker compose up)
 
 ## Adding a New Series
 
-1. Add entry to `series` list in `scripts/etl.py`: `("SGS_CODE", "tipo_name")`
-2. Update `CHECK` constraint in `config/database.py` `create_tables()` to include new `tipo`
-3. Update pivot view SQL to include new column
-4. Update dashboard (`app/app.py`) to handle new series in charts, metrics, stats
+1. Add entry to `SERIES` list in `scripts/etl.py`: `("SGS_CODE", "tipo_name")`
+2. Update `CHECK` constraint in `config/database.py::create_tables()` to include new `tipo`
+3. Update pivot view SQL to expose the new column and its variation
+4. Update `app/data.py::build_long_df` (the `series_map` tuple) and the chart helpers in `app/views.py` (`_build_chart` / `build_chart_dolar` / `build_chart_selic`)
 
-## Notes for Future Work
+## Notes
 
-- The `docker-compose.yml` currently only runs Metabase. The original Streamlit service was removed. If you need Streamlit in Docker, add a `streamlit-app` service back.
-- The `Dockerfile` is configured for ETL scripts (CMD runs table creation + ETL), not for serving Streamlit.
-- Metabase persists its H2 database in a named volume `metabase_data`.
 - BCB API returns data in Portuguese date format (`DD/MM/YYYY`) — parsing is strict.
 - Selic Meta (432) is the annualized target rate set by Copom, not the daily Selic over rate.
+- The Docker container only serves Streamlit — ETL is decoupled and runs from CI to keep restarts cheap.

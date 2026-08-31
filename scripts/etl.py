@@ -1,5 +1,6 @@
 import pandas as pd
 from sqlalchemy import text
+
 from config.database import get_engine
 from scripts.fetch_bcb_series import fetch_bcb_data
 
@@ -18,34 +19,32 @@ def load_data():
 
     frames = [fetch_bcb_data(codigo, nome) for codigo, nome in SERIES]
     valid = [df for df in frames if not df.empty]
-
     if not valid:
         raise RuntimeError("Nenhuma série foi coletada do BCB")
 
-    combined_df = (
+    combined = (
         pd.concat(valid, ignore_index=True)
-        .sort_values('data')
+        .sort_values("data")
         .reset_index(drop=True)
     )
 
-    # psycopg formata `date`/`numeric` a partir de Python `datetime`/`Decimal`
-    # (ou strings ISO), então convertemos explicitamente para evitar
-    # ambiguidade de tipo no lado do driver.
+    # psycopg aceita `date`/`numeric` a partir de `datetime`/`Decimal`/strings
+    # ISO, mas converter explicitamente evita ambiguidade de tipo no driver.
     rows = [
-        {'data': d.date(), 'tipo': t, 'valor': float(v)}
-        for d, t, v in combined_df[['data', 'tipo', 'valor']].itertuples(index=False, name=None)
+        {"data": d.date(), "tipo": t, "valor": float(v)}
+        for d, t, v in combined[["data", "tipo", "valor"]].itertuples(index=False, name=None)
     ]
 
     engine = get_engine()
     with engine.begin() as conn:
         conn.execute(
             text("""
-            INSERT INTO cotacao_dolar_selic (data, tipo, valor)
-            VALUES (:data, :tipo, :valor)
-            ON CONFLICT (data, tipo) DO NOTHING
+                INSERT INTO cotacao_dolar_selic (data, tipo, valor)
+                VALUES (:data, :tipo, :valor)
+                ON CONFLICT (data, tipo) DO NOTHING
             """),
-            rows
+            rows,
         )
     engine.dispose()
 
-    print(f"Dados carregados com sucesso! Total de registros: {len(combined_df)}")
+    print(f"Dados carregados com sucesso! Total de registros: {len(combined)}")
