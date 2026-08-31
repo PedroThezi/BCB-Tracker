@@ -77,13 +77,32 @@ def create_tables():
         """))
         conn.execute(text("""
         CREATE OR REPLACE VIEW cotacao_dolar_selic_pivot AS
+        WITH base AS (
+            SELECT
+                data,
+                MAX(CASE WHEN tipo = 'dolar' THEN valor END) AS dolar,
+                MAX(CASE WHEN tipo = 'selic_meta' THEN valor END) AS selic_meta
+            FROM cotacao_dolar_selic
+            GROUP BY data
+            HAVING COUNT(*) > 0
+        )
         SELECT
             data,
-            MAX(CASE WHEN tipo = 'dolar' THEN valor END) AS dolar,
-            MAX(CASE WHEN tipo = 'selic_meta' THEN valor END) AS selic_meta
-        FROM cotacao_dolar_selic
-        GROUP BY data
-        HAVING COUNT(*) > 0
+            dolar,
+            selic_meta,
+            CASE
+                WHEN dolar IS NULL OR LAG(dolar) OVER (ORDER BY data) IS NULL THEN NULL
+                WHEN LAG(dolar) OVER (ORDER BY data) = 0 THEN NULL
+                ELSE ((dolar - LAG(dolar) OVER (ORDER BY data))
+                      / LAG(dolar) OVER (ORDER BY data)) * 100
+            END AS dolar_variacao,
+            CASE
+                WHEN selic_meta IS NULL OR LAG(selic_meta) OVER (ORDER BY data) IS NULL THEN NULL
+                WHEN LAG(selic_meta) OVER (ORDER BY data) = 0 THEN NULL
+                ELSE ((selic_meta - LAG(selic_meta) OVER (ORDER BY data))
+                      / LAG(selic_meta) OVER (ORDER BY data)) * 100
+            END AS selic_meta_variacao
+        FROM base
         ORDER BY data;
         """))
     engine.dispose()

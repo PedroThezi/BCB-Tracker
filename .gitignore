@@ -1,11 +1,7 @@
 # Variáveis de ambiente
 .env
-.env.local
-.env.development
-.env.production
-.claude/
-claude.md
-secrets.toml
+.env.*
+!.env.example
 
 # Cache e artefatos Python
 __pycache__/
@@ -16,35 +12,17 @@ __pycache__/
 env/
 venv/
 .venv/
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Docker
-.dockerignore
-docker-compose.override.yml
-.docker/
-
-# Airflow
-airflow/airflow-webserver.log
-airflow/airflow-scheduler.log
-airflow/logs/
-airflow/airflow.db
-airflow/airflow-*.log
 
 # Streamlit
 .streamlit/secrets.toml
 .streamlit/credentials/
 
-# IDE
+# IDE / editor
 .idea/
 .vscode/
 *.swp
 *.swo
-*.DS_Store
+.DS_Store
 
 # Logs
 *.log
-
-# Configs sensíveis
-config/*.env
-config/*.json
