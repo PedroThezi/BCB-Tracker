@@ -6,7 +6,7 @@
 # Claude / ferramentas locais
 .claude/
 CLAUDE.md
-
+.prompt/
 # Cache e artefatos Python
 __pycache__/
 *.pyc
